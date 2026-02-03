@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Bạn đoán được ko ?</title>
+    <style>
+        body {
+    background: linear-gradient(135deg, #4facfe, #43e97b);
+    color: #2d3436;
+    font-family: sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+}
+
+        #start-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: linear-gradient(135deg, #ff9a9e, #fad0c4);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;   /* 👈 DÒNG QUAN TRỌNG */
+    z-index: 1000;
+}
+
+
+
+        #start-button {
+    padding: 18px 50px;
+    font-size: 22px;
+    border-radius: 40px;
+    background: linear-gradient(135deg, #feca57, #ff9f43);
+    color: #2d3436;
+    border: none;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 8px 0 #e17055, 0 0 20px rgba(255,159,67,0.6);
+    transition: 0.15s;
+}
+
+/* Hiệu ứng bấm lún */
+#start-button:active {
+    transform: translateY(4px);
+    box-shadow: 0 4px 0 #e17055;
+}
+
+button {
+    padding: 10px 20px;
+    background: linear-gradient(135deg, #feca57, #ff9f43);
+    border: none;
+    color: #2d3436;
+    cursor: pointer;
+    border-radius: 25px;
+    font-weight: bold;
+    box-shadow: 0 6px 0 #e17055;
+}
+button:active {
+    transform: translateY(4px);        /* nút đi xuống */
+    box-shadow: 0 2px 0 #2d98da;        /* bóng ngắn lại */
+}
+
+
+        .game-container {
+    background: rgba(255, 255, 255, 0.35);
+    padding: 30px;
+    border-radius: 20px;
+    text-align: center;
+    width: 400px;
+    display: none;
+    box-shadow: 0 15px 30px rgba(0,0,0,0.2);
+}
+
+        input {
+            font-size: 24px;
+            padding: 10px;
+            width: 140px;
+            text-align: center;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border: none;
+        }
+        /* Phần chứa nhật ký */
+        .history-box {
+            margin-top: 15px;
+            text-align: left;
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+            padding: 10px;
+        }
+        .history-header {
+            display: block;
+            border-bottom: 1px solid #444;
+            padding-bottom: 5px;
+            margin-bottom: 5px;
+            color: #f1c40f;
+            font-weight: bold;
+        }
+        #logContainer {
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 14px;
+        }
+/* ===== MÀN HÌNH CHỜ ĐẸP HƠN ===== */
+#start-overlay {
+    background: linear-gradient(135deg, #ffb8b8, #ffd6a5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.start-card {
+    background: rgba(255, 255, 255, 0.35);
+    padding: 40px 60px;
+    border-radius: 25px;
+    text-align: center;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.25);
+}
+
+.start-card h2 {
+    margin-bottom: 30px;
+    font-size: 28px;
+    color: #2d3436;
+    text-shadow: 2px 2px 0 #fff;
+    letter-spacing: 1px;
+}
+
+    </style>
+</head>
+<body>
+
+<div id="start-overlay">
+    <div class="start-card">
+        <h2>SẴN SÀNG CHƯA?</h2>
+        <button id="start-button" onclick="startGame()">BẮT ĐẦU CHƠI</button>
+    </div>
+</div>
+
+<div class="game-container" id="gameContents">
+    <h1>🤔 Bạn đoán được ko ?</h1>
+    <p>Lượt còn lại: <span id="turns" style="color:#ff6b6b; font-weight:bold;">8</span></p>
+    
+    <audio id="xoSoMusic" loop>
+        <source src="https://www.myinstants.com/media/sounds/nhac-xo-so.mp3" type="audio/mpeg">
+    </audio>
+
+    <input type="text" id="guessInput" maxlength="4" placeholder="....">
+    <br>
+    <button onclick="play()" style="padding: 10px 20px; background:#4facfe; border:none; color:white; cursor:pointer; border-radius:5px; font-weight:bold;">ĐOÁN!</button>
+
+    <div id="message" style="margin-top: 10px; font-weight: bold; font-size: 1.2em;"></div>
+
+    <div class="history-box">
+        <span class="history-header">📋 Lịch sử dự đoán:</span>
+        <div id="logContainer"></div>
+    </div>
+    
+    <button onclick="resetGame()" style="margin-top:15px; background:none; color:#777; border:none; cursor:pointer;">Chơi lại</button>
+</div>
+
+<script>
+    let target = [];
+    let turnsLeft = 8;
+    const music = document.getElementById('xoSoMusic');
+
+    function startGame() {
+        document.getElementById('start-overlay').style.display = 'none';
+        document.getElementById('gameContents').style.display = 'block';
+        music.play().catch(() => console.log("Nhạc bị chặn"));
+        generateNumber();
+        document.getElementById('guessInput').focus();
+    }
+
+    function generateNumber() {
+        target = [];
+        while(target.length < 4) {
+            let r = Math.floor(Math.random() * 10).toString();
+            if(!target.includes(r)) target.push(r);
+        }
+        console.log("Đáp án (cheat):", target.join(''));
+    }
+
+    document.getElementById('guessInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') play();
+    });
+
+    function play() {
+        let input = document.getElementById('guessInput');
+        let val = input.value;
+        if(val.length !== 4 || isNaN(val)) { alert("Nhập đủ 4 số bạn nhé!"); return; }
+
+        turnsLeft--;
+        document.getElementById('turns').innerText = turnsLeft;
+
+        let guessArr = val.split('');
+        let correctNums = 0;
+        let correctPos = 0;
+
+        guessArr.forEach(n => { if(target.includes(n)) correctNums++; });
+        for(let i=0; i<4; i++) { if(guessArr[i] === target[i]) correctPos++; }
+
+        let log = document.createElement('div');
+        log.style.padding = "3px 0";
+        log.innerHTML = `<span style="color:#00f2fe">></span> ${val}: <span style="color:#f1c40f">${correctNums} số đúng</span> (${correctPos} vị trí đúng)`;
+        
+        // Chèn vào logContainer thay vì chèn trực tiếp vào history
+        document.getElementById('logContainer').prepend(log);
+
+        if(correctPos === 4) {
+            document.getElementById('message').innerHTML = "🏆 ĐỈNH QUÁ! BẠN THẮNG RỒI!";
+            document.getElementById('message').style.color = "#2ecc71";
+            input.disabled = true;
+        } else if(turnsLeft === 0) {
+            document.getElementById('message').innerHTML = "💀 THUA MẤT RỒI! Đáp án là: " + target.join('');
+            document.getElementById('message').style.color = "#ff6b6b";
+            input.disabled = true;
+        }
+        input.value = "";
+    }
+
+    function resetGame() {
+    // 👉 Lưu đáp án cũ
+    const oldAnswer = target.join('');
+
+    // 👉 Hiện đáp án cũ cho người chơi
+    document.getElementById('message').innerHTML =
+        "🔎 Số máy đã chọn là: <b>" + oldAnswer + "</b>";
+    document.getElementById('message').style.color = "#0984e3";
+
+    // 👉 Sinh số mới cho ván tiếp theo
+    generateNumber();
+
+    // Reset lượt
+    turnsLeft = 8;
+    document.getElementById('turns').innerText = turnsLeft;
+
+    // Reset input
+    const input = document.getElementById('guessInput');
+    input.value = "";
+    input.disabled = false;
+    input.focus();
+
+    // Xóa lịch sử đoán
+    document.getElementById('logContainer').innerHTML = "";
+}
+
+
+</script>
+</body>
+</html>
